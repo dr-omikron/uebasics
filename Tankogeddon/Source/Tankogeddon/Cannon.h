@@ -7,7 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "Cannon.generated.h"
 
-
+class AProjectile;
 class UArrowComponent;
 class UStaticMeshComponent;
 
@@ -30,11 +30,11 @@ public:
 	float FireRate = 1.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
-	float FireRateMachineGun = 5;
+	float FireMachineGunRate = 5;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
-	int MachineGunShootsRate = 3;
-
+	int32 FireMachineGunShots = 3;
+				
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
 	float FireRange = 1000.f;
 
@@ -42,43 +42,64 @@ public:
 	float FireDamage = 1.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
-	int MaxAmmo = 50;
+	int32 MaxAmmo = 20;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
-	int MaxAmmoSpecial = 20;
+	int32 MaxAmmoMachineGun = 5;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
+	int32 MaxAmmoSpecial = 5;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
+	int32 MaxAmmoRockets = 10;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
+	int32 MaxAmmoTrace = 10;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
 	ECannonType Type = ECannonType::FireProjectile;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
+	TSubclassOf<AProjectile> ProjectileClass;
+				
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Fire();
-
-	UFUNCTION(BlueprintCallable, Category = "Fire")
-	void FireMachineGun();
-
-	UFUNCTION(BlueprintCallable, Category = "Fire")
-	void FireMachineGunSpecial();
 	
 	UFUNCTION(BlueprintCallable, Category = "Fire")
-	void MaxAmmoReload();
+	void AddAmmo(int32 AmmoQuantity);
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
-	void MaxAmmoSpecialReload();
+	void AddAmmoRockets(int32 AmmoQuantity);
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void AddAmmoTrace(int32 AmmoQuantity);
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void AddAmmoSpecial(int32 AmmoQuantity);
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void AddAmmoMachineGun(int32 AmmoQuantity);
 	
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void FireSpecial();
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
-	bool IsReadyToFire() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Fire")
-	bool IsAnyAmmo();
-
-	UFUNCTION(BlueprintCallable, Category = "Fire")
-	bool IsAnyAmmoSpecial();
-
+	void FireMachineGun();
+	
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Timer();
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void SpawnProjectile();
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void SpawnProjectileSpecial();
+
+	UFUNCTION(BlueprintCallable, Category = "Visibility")
+	bool IsReadyToFireCannonClass();
+
+	UFUNCTION(BlueprintCallable, Category = "Visibility")
+	void SetIsActive(bool bInIsActive);
 	
 protected:
 	// Called when the game starts or when spawned
@@ -87,12 +108,13 @@ protected:
 	void Reload();
 
 private:
-	int AmmoStock;
-	int AmmoStockSpecial;
-	int MachineGunShoots;
-	bool bIsReadyToFire = false;
-	bool bIsAnyAmmo = false;
-	bool bIsAnyAmmoSpecial = false;
+	int32 AmmoStock = 0;
+	int32 AmmoStockTrace = 0;
+	int32 AmmoStockRockets = 0;
+	int32 AmmoStockSpecial = 5;
+	int32 AmmoStockMachineGun = 0;
+	int32 CurrentFireMachineGunShots = 0;
+	bool bIsReloading = false;
 	FTimerHandle ReloadTimerHandle;
 	FTimerHandle MachineGunTimerHandle;
 };

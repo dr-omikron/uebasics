@@ -2,9 +2,9 @@
 
 
 #include "Cannon.h"
-
-#include <string>
-
+#include "DrawDebugHelpers.h"
+#include "Projectile.h"
+#include "TankogeddonGameModeBase.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
@@ -21,145 +21,208 @@ ACannon::ACannon()
 	ProjectileSpawnPoint->SetupAttachment(CanonMesh);
 }
 
+void ACannon::AddAmmo(int32 AmmoQuantity)
+{
+	AmmoStock = FMath::Clamp(0, MaxAmmo, AmmoStock + AmmoQuantity);
+}
+
+void ACannon::AddAmmoRockets(int32 AmmoQuantity)
+{
+	AmmoStockRockets = FMath::Clamp(0, MaxAmmoRockets, AmmoStockRockets + AmmoQuantity);
+}
+
+void ACannon::AddAmmoTrace(int32 AmmoQuantity)
+{
+	AmmoStockTrace = FMath::Clamp(0, MaxAmmoTrace, AmmoStockTrace + AmmoQuantity);
+}
+
+void ACannon::AddAmmoSpecial(int32 AmmoQuantity)
+{
+	AmmoStockSpecial = FMath::Clamp(0, MaxAmmoSpecial, AmmoStockSpecial + AmmoQuantity);
+}
+
+void ACannon::AddAmmoMachineGun(int32 AmmoQuantity)
+{
+	AmmoStockMachineGun = FMath::Clamp(0, MaxAmmoMachineGun, AmmoStockMachineGun + AmmoQuantity);
+}
+
 void ACannon::Fire()
 {
-	IsAnyAmmo();
-	
-	if(!bIsReadyToFire || !bIsAnyAmmo)
+	if (Type == ECannonType::FireProjectile)
 	{
-		return;
+		if (!bIsReloading && AmmoStockMachineGun > 0)
+		{
+			CurrentFireMachineGunShots = FireMachineGunShots;
+			AmmoStockMachineGun--;
+			GetWorld()->GetTimerManager().SetTimer(MachineGunTimerHandle, this, &ACannon::FireMachineGun, 1.f / FireMachineGunRate, true);
+			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Machine Gun Ammo: %d"), AmmoStockMachineGun));
+			Timer();
+		}
+		else if (IsReadyToFireCannonClass())
+		{
+			AmmoStock--;
+			GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Projectile"));
+			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Ammo: %d"), AmmoStock));
+			SpawnProjectile();
+			Timer();
+		}
+		if(AmmoStock <= 0)
+		{
+			GEngine->AddOnScreenDebugMessage(7, 1.f, FColor::Red, FString::Printf(TEXT("Ammo Stock is empty")));
+		}
 	}
-	
-	bIsReadyToFire = false;
-
-	std::string AmmoStockDebugStr = std::to_string(AmmoStock);
-	
-	if(Type == ECannonType::FireProjectile)
+		
+	if (Type == ECannonType::FireTrace)
 	{
-		AmmoStock--;
-		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Projectile"));
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, AmmoStockDebugStr.c_str());
+		if (IsReadyToFireCannonClass())
+		{
+			AmmoStockTrace--;
+			GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Trace"));
+			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Trace Gun Ammo: %d"), AmmoStockTrace));
+			FHitResult HitResult;
+			FVector StartPoint = ProjectileSpawnPoint->GetComponentLocation();
+			FVector EndPoint = StartPoint + ProjectileSpawnPoint->GetForwardVector() * FireRange;
+			FCollisionQueryParams TraceParams = FCollisionQueryParams(FName("FireTrace"), true, this);
+			TraceParams.bTraceComplex = true;
+			TraceParams.bReturnPhysicalMaterial = false;
+			if (GetWorld()->LineTraceSingleByChannel(HitResult, StartPoint, EndPoint, ECollisionChannel::ECC_Visibility, TraceParams))
+			{
+				DrawDebugLine(GetWorld(), StartPoint, HitResult.Location, FColor::Red, false, 0.5f, 0, 10);
+				if (HitResult.Actor.IsValid())
+				{
+					HitResult.Actor->Destroy();
+				}
+			}
+			else
+			{
+				DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Green, false, 0.5f, 0, 10);
+			}
+			Timer();
+		}
+		if (AmmoStockTrace <= 0)
+		{
+			GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Red, FString::Printf(TEXT("Ammo Stock Trace is empty")));
+		}
 	}
-	if(Type == ECannonType::FireTrace)
+	if (Type == ECannonType::FireRockets)
 	{
-		AmmoStock--;
-		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Trace"));
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, AmmoStockDebugStr.c_str());
+		if (IsReadyToFireCannonClass())
+		{
+			AmmoStockRockets--;
+			GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Rockets"));
+			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Rockets : %d"), AmmoStockRockets));
+			SpawnProjectile();
+			Timer();
+		}
+		if (AmmoStockRockets <= 0)
+		{
+			GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Red, FString::Printf(TEXT("Ammo Stock Rockets is empty")));
+		}
 	}
-	if(Type == ECannonType::FireMachineGun)
-	{
-		MachineGunShoots = MachineGunShootsRate;
-		AmmoStock--;
-		GetWorld()->GetTimerManager().SetTimer(MachineGunTimerHandle, this, &ACannon::FireMachineGun, 1.f / FireRateMachineGun, true);
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, AmmoStockDebugStr.c_str());
-	}
-	Timer();
-}
-
-void ACannon::MaxAmmoReload()
-{
-	AmmoStock = MaxAmmo;
-	bIsAnyAmmo = true;
-}
-
-void ACannon::MaxAmmoSpecialReload()
-{
-	AmmoStockSpecial = MaxAmmoSpecial;
-	bIsAnyAmmoSpecial = true;
 }
 
 void ACannon::FireSpecial()
 {
-	IsAnyAmmoSpecial();
-	
-	if (!bIsReadyToFire || !bIsAnyAmmoSpecial)
-	{
-		return;
-	}
-
-	bIsReadyToFire = false;
-
-	std::string AmmoStockSpecialDebugStr = std::to_string(AmmoStockSpecial);
-
-	if (Type == ECannonType::FireProjectile)
+	if (!bIsReloading && AmmoStockSpecial > 0)
 	{
 		AmmoStockSpecial--;
-		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Red, TEXT("Fire Special - Projectile"));
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Blue, AmmoStockSpecialDebugStr.c_str());
+		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire - Special"));
+		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Special Ammo: %d"), AmmoStockSpecial));
+		SpawnProjectileSpecial();
+		Timer();
 	}
-	if (Type == ECannonType::FireTrace)
+	if (AmmoStockSpecial <= 0)
 	{
-		AmmoStockSpecial--;
-		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Green, TEXT("Fire Special - Trace"));
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Blue, AmmoStockSpecialDebugStr.c_str());
+		GEngine->AddOnScreenDebugMessage(9, 1.f, FColor::Red, FString::Printf(TEXT("Ammo Stock Special is empty")));
 	}
-	if (Type == ECannonType::FireMachineGun)
-	{
-		MachineGunShoots = MachineGunShootsRate;
-		AmmoStockSpecial--;
-		GetWorld()->GetTimerManager().SetTimer(MachineGunTimerHandle, this, &ACannon::FireMachineGunSpecial, 1.f / FireRateMachineGun, true);
-		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Blue, AmmoStockSpecialDebugStr.c_str());
-	}
-	Timer();
-}
-
-void ACannon::FireMachineGunSpecial()
-{
-	if (--MachineGunShoots <= 0)
-	{
-		GetWorldTimerManager().ClearTimer(MachineGunTimerHandle);
-	}
-	GEngine->AddOnScreenDebugMessage(9, 0.1, FColor::Red, TEXT("Fire Special - MachineGun"));
 }
 
 void ACannon::FireMachineGun()
 {
-	if (--MachineGunShoots <= 0)
+	if (--CurrentFireMachineGunShots <= 0)
 	{
 		GetWorldTimerManager().ClearTimer(MachineGunTimerHandle);
 	}
 	GEngine->AddOnScreenDebugMessage(9, 0.1, FColor::Green, TEXT("Fire - MachineGun"));
-}
-
-bool ACannon::IsReadyToFire() const
-{
-	return bIsReadyToFire;
-}
-
-bool ACannon::IsAnyAmmo() 
-{
-	if(!AmmoStock)
-	{
-		bIsAnyAmmo = false;
-	}
-	return bIsAnyAmmo;
-}
-
-bool ACannon::IsAnyAmmoSpecial()
-{
-	if (!AmmoStockSpecial)
-	{
-		bIsAnyAmmoSpecial = false;
-	}
-	return bIsAnyAmmoSpecial;
+	SpawnProjectile();
 }
 
 void ACannon::Timer()
 {
+	bIsReloading = true;
 	GetWorld()->GetTimerManager().SetTimer(ReloadTimerHandle, this, &ACannon::Reload, 1.f / FireRate, false);
 }
+
+void ACannon::SpawnProjectile()
+{
+	FTransform NewProjectileTransform;
+	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
+	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
+	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
+	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
+	Projectile->SetInstigator(GetInstigator());
+	Projectile->MoveRange = FireRange;
+	Projectile->Start();
+}
+
+void ACannon::SpawnProjectileSpecial()
+{
+	FTransform NewProjectileTransform;
+	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
+	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
+	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
+	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
+	Projectile->SetInstigator(GetInstigator());
+	Projectile->MoveRange = FireRange;
+	Projectile->StartSpecial();
+}
+
+bool ACannon::IsReadyToFireCannonClass()
+{
+	if(Type == ECannonType::FireProjectile)
+	{
+		return !bIsReloading && AmmoStock > 0;
+	}
+	if(Type == ECannonType::FireTrace)
+	{
+		return !bIsReloading && AmmoStockTrace > 0;
+	}
+	if (Type == ECannonType::FireRockets)
+	{
+		return !bIsReloading && AmmoStockRockets > 0;
+	}
+	return false;
+}
+
+void ACannon::SetIsActive(bool bInIsActive)
+{
+	CanonMesh->SetVisibility(bInIsActive);
+};
 
 // Called when the game starts or when spawned
 void ACannon::BeginPlay()
 {
 	Super::BeginPlay();
 	Reload();
-	MaxAmmoReload();
-	MaxAmmoSpecialReload();
+	if(Type == ECannonType::FireProjectile)
+	{
+		AddAmmo(MaxAmmo);
+		AddAmmoMachineGun(MaxAmmoMachineGun);
+	}
+	if (Type == ECannonType::FireRockets)
+	{
+		AddAmmoRockets(MaxAmmoRockets);
+	}
+	if (Type == ECannonType::FireTrace)
+	{
+		AddAmmoTrace(MaxAmmoTrace);
+	}
 }
 
 void ACannon::EndPlay(const EEndPlayReason::Type Reason)
 {
+	GetWorldTimerManager().ClearTimer(MachineGunTimerHandle);
+	GetWorldTimerManager().ClearTimer(ReloadTimerHandle);
 	MachineGunTimerHandle.Invalidate();
 	ReloadTimerHandle.Invalidate();
 	Super::EndPlay(Reason);
@@ -167,7 +230,7 @@ void ACannon::EndPlay(const EEndPlayReason::Type Reason)
 
 void ACannon::Reload()
 {
-	bIsReadyToFire = true;
+	bIsReloading = false;
 }
 
 

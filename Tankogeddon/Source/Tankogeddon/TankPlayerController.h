@@ -29,6 +29,7 @@ private:
 	void RotateRight(float InRotateRightAxisValue);
 	void Fire();
 	void FireSpecial();
+	void ChangeCannon();
 	FVector CasheMousePos;
 	UPROPERTY()
 	class ATankPawn* TankPawn;

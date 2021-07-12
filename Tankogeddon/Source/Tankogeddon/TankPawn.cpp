@@ -4,9 +4,11 @@
 
 #include "Cannon.h"
 #include "DrawDebugHelpers.h"
+#include "HealthComponent.h"
 #include "TankPlayerController.h"
 #include "Camera/CameraComponent.h"
 #include "Components/ArrowComponent.h"
+#include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -35,6 +37,15 @@ ATankPawn::ATankPawn()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Tank Camera"));
 	Camera->SetupAttachment(SpringArm);
+	DefaultCannonClasses.Add(ACannon::StaticClass());
+
+	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("Health component"));
+	HealthComponent->OnDie.AddUObject(this, &ATankPawn::Die);
+	HealthComponent->OnDamaged.AddUObject(this, &ATankPawn::DamageTaked);
+
+	HitCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("Hit collider"));
+	HitCollider->SetupAttachment(BodyMesh);
+
 }
 
 // Called when the game starts or when spawned
@@ -42,7 +53,18 @@ void ATankPawn::BeginPlay()
 {
 	Super::BeginPlay();
 	TankController = Cast<ATankPlayerController>(GetController());
-	SetupCannon();
+	if(DefaultCannonClasses.Num() == 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Num of DefautCannonClasses should be larger than zero!"))
+		DefaultCannonClasses.Add(ACannon::StaticClass());
+	}
+	CannonSlots.SetNumZeroed(DefaultCannonClasses.Num());
+	CurrentCannon = 0;
+	for(int32 CurrentSlot = 0; CurrentSlot < CannonSlots.Num(); ++CurrentSlot)
+	{
+		SetupCannonInternal(CurrentSlot, DefaultCannonClasses[CurrentSlot]);
+	}
+	
 }
 
 // Called every frame
@@ -91,7 +113,7 @@ void ATankPawn::RotateRight(float InMoveRightAxisValue)
 
 void ATankPawn::Fire()
 {
-	if(Cannon)
+	if(ACannon* Cannon = GetCurrentCannon())
 	{
 		Cannon->Fire();
 	}
@@ -99,27 +121,78 @@ void ATankPawn::Fire()
 
 void ATankPawn::FireSpecial()
 {
-	if(Cannon)
+	if(ACannon* Cannon = GetCurrentCannon())
 	{
 		Cannon->FireSpecial();
 	}
 }
 
-void ATankPawn::SetupCannon()
+void ATankPawn::CycleCannon()
 {
-	if(Cannon)
+	if(ACannon* Cannon = GetCurrentCannon())
 	{
-		Cannon->Destroy();
-		Cannon = nullptr;
+		Cannon->SetIsActive(false);
 	}
-	if(CannonClass)
+	if(!CannonSlots.IsValidIndex(++CurrentCannon))
+	{
+		CurrentCannon = 0;
+	}
+	if(ACannon* Cannon = GetCurrentCannon()) 
+	{
+		Cannon->SetIsActive(true);
+	}
+	GEngine->AddOnScreenDebugMessage(6, 1.f, FColor::Emerald, FString::Printf(TEXT("Selected Cannon %d"), CurrentCannon));
+}
+
+void ATankPawn::SetupCannon(TSubclassOf<ACannon> NewCannon)
+{
+	SetupCannonInternal(CurrentCannon, NewCannon);
+}
+
+ACannon* ATankPawn::GetCurrentCannon() const
+{
+	check(CannonSlots.IsValidIndex(CurrentCannon));
+	return CannonSlots[CurrentCannon];
+}
+
+void ATankPawn::SetupCannonInternal(int32 SlotIndex, TSubclassOf<ACannon> NewCannonClass)
+{
+	check(CannonSlots.IsValidIndex(SlotIndex));
+	ACannon*& CannonSlot = CannonSlots[SlotIndex];
+	if (CannonSlot)
+	{
+		CannonSlot->Destroy();
+		CannonSlot = nullptr;
+	}
+	if (NewCannonClass)
 	{
 		FActorSpawnParameters Params;
 		Params.Instigator = this;
 		Params.Owner = this;
-		Cannon = GetWorld()->SpawnActor<ACannon>(CannonClass, Params);
-		Cannon->AttachToComponent(CannonSetupPoint, FAttachmentTransformRules::SnapToTargetIncludingScale);
+		Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		CannonSlot = GetWorld()->SpawnActor<ACannon>(NewCannonClass, Params);
+		CannonSlot->AttachToComponent(CannonSetupPoint, FAttachmentTransformRules::SnapToTargetIncludingScale);
+		CannonSlot->SetIsActive(CurrentCannon == SlotIndex);
 	}
 }
 
+void ATankPawn::TakeDamage(FDamageData DamageData)
+{
+	HealthComponent->TakeDamage(DamageData);
+}
 
+void ATankPawn::Die()
+{
+	Destroy();
+}
+
+void ATankPawn::DamageTaked(float DamageValue)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Tank %s taked damage:%f Health:%f"), *GetName(), DamageValue, HealthComponent->GetHealth());
+	GEngine->AddOnScreenDebugMessage(11, 3.f, FColor::Red, FString::Printf(TEXT("Tank Health: %f%%"), HealthComponent->GetHealthState()));
+}
+
+void ATankPawn::AddHealth(float AddiditionalHealthValue)
+{
+	HealthComponent->AddHealth(AddiditionalHealthValue);
+}

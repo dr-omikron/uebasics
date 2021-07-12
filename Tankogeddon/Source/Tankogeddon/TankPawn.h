@@ -3,9 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
+#include "DamageTakerInterface.h"
+#include "GameStruct.h"
 #include "GameFramework/Pawn.h"
 #include "TankPawn.generated.h"
 
+class UHealthComponent;
+class UBoxComponent;
 class UArrowComponent;
 class ACannon;
 class ATankPlayerController;
@@ -14,7 +19,7 @@ class USpringArmComponent;
 class UCameraComponent;
 
 UCLASS()
-class TANKOGEDDON_API ATankPawn : public APawn
+class TANKOGEDDON_API ATankPawn : public APawn, public IDamageTakerInterface
 {
 	GENERATED_BODY()
 
@@ -51,9 +56,16 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
 	float TurretRotationSensitivity = 0.5f;
-
+		
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannon")
-	TSubclassOf<ACannon> CannonClass;
+	TArray<TSubclassOf<ACannon>> DefaultCannonClasses;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
+	UBoxComponent* HitCollider;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
+	UHealthComponent* HealthComponent;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -64,26 +76,54 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void MoveForward(float InMoveForwardAxisValue);
+
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void MoveRight(float InMoveRightAxisValue);
+
 	UFUNCTION(BlueprintCallable, Category = "Movement")
 	void RotateRight(float InMoveRightAxisValue);
+
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Fire();
+
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void FireSpecial();
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	void CycleCannon();
+
+	UFUNCTION(BlueprintCallable, Category = "Cannon")
+	void SetupCannon(TSubclassOf<ACannon> NewCannon);
+
+	UFUNCTION(BlueprintPure, Category = "Cannon")
+	ACannon* GetCurrentCannon() const;
+
+	UFUNCTION()
+	virtual void TakeDamage(FDamageData DamageData) override;
+
+	UFUNCTION()
+	void Die();
+
+	UFUNCTION()
+	void DamageTaked(float DamageValue);
+
+	UFUNCTION()
+	void AddHealth(float AddiditionalHealthValue);
 	
 private:
-	
-	void SetupCannon();
 	UPROPERTY()
 	ATankPlayerController* TankController = nullptr;
 	UPROPERTY()
-	ACannon* Cannon;
+	TArray<ACannon*> CannonSlots;
+	UPROPERTY()
+	uint8 CurrentCannon = INDEX_NONE;
+	
 	float CurrentMoveForwardAxis = 0.f;
 	float CurrentMoveRightAxis = 0.f;
 	float CurrentRotateRightAxis = 0.f;
 	float TargetMoveForwardAxis = 0.f;
 	float TargetMoveRightAxis = 0.f;
 	float TargetRotateRightAxis = 0.f;
+
+	void SetupCannonInternal(int32 SlotIndex, TSubclassOf<ACannon> NewCannonClass);
 };
