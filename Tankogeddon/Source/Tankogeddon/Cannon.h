@@ -85,6 +85,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void FireMachineGun();
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	AProjectile* GetProjectile();
 	
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Timer();

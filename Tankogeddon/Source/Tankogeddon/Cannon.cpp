@@ -2,9 +2,13 @@
 
 
 #include "Cannon.h"
+
+#include "DamageTakerInterface.h"
 #include "DrawDebugHelpers.h"
 #include "Projectile.h"
+#include "ScorableInterfase.h"
 #include "TankogeddonGameModeBase.h"
+#include "TankogeddonPlayerState.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
@@ -90,7 +94,31 @@ void ACannon::Fire()
 				DrawDebugLine(GetWorld(), StartPoint, HitResult.Location, FColor::Red, false, 0.5f, 0, 10);
 				if (HitResult.Actor.IsValid())
 				{
-					HitResult.Actor->Destroy();
+					bool bWasDestroyed = false;
+					AActor* HitActor = Cast<AActor>(HitResult.Actor);
+					IScorableInterfase* Scorable = Cast<IScorableInterfase>(HitResult.Actor);
+					if(IDamageTakerInterface* Damagable = Cast<IDamageTakerInterface>(HitResult.Actor))
+					{
+						FDamageData DamageData;
+						DamageData.DamageMaker = this;
+						DamageData.Instigator = GetInstigator();
+						DamageData.DamageValue = FireDamage;
+						bWasDestroyed = Damagable->TakeDamage(DamageData);
+					}
+					else
+					{
+						HitActor->Destroy();
+						bWasDestroyed = true;
+					}
+					if (Scorable && bWasDestroyed && GetInstigator())
+					{
+						ATankogeddonPlayerState* PlayerState = GetInstigator()->GetPlayerState<ATankogeddonPlayerState>();
+						if (PlayerState)
+						{
+							PlayerState->AddScores(Scorable->GetDestroyScore());
+							GEngine->AddOnScreenDebugMessage(15, 5.f, FColor::Cyan, FString::Printf(TEXT("Scores is: %d"), PlayerState->GetScores()));
+						}
+					}
 				}
 			}
 			else
@@ -147,6 +175,18 @@ void ACannon::FireMachineGun()
 	SpawnProjectile();
 }
 
+AProjectile* ACannon::GetProjectile()
+{
+	FTransform NewProjectileTransform;
+	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
+	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
+	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
+	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
+	Projectile->SetInstigator(GetInstigator());
+	Projectile->MoveRange = FireRange;
+	return Projectile;
+}
+
 void ACannon::Timer()
 {
 	bIsReloading = true;
@@ -155,26 +195,12 @@ void ACannon::Timer()
 
 void ACannon::SpawnProjectile()
 {
-	FTransform NewProjectileTransform;
-	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
-	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
-	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
-	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
-	Projectile->SetInstigator(GetInstigator());
-	Projectile->MoveRange = FireRange;
-	Projectile->Start();
+	GetProjectile()->Start();
 }
 
 void ACannon::SpawnProjectileSpecial()
 {
-	FTransform NewProjectileTransform;
-	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
-	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
-	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
-	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
-	Projectile->SetInstigator(GetInstigator());
-	Projectile->MoveRange = FireRange;
-	Projectile->StartSpecial();
+	GetProjectile()->StartSpecial();
 }
 
 bool ACannon::IsReadyToFireCannonClass()

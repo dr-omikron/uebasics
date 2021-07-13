@@ -58,5 +58,7 @@ protected:
 	UFUNCTION()
 	void MoveSpecial();
 
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	float FlewDistance = 0.f;
 };

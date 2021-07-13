@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "DamageTakerInterface.h"
 #include "GameStruct.h"
+#include "ScorableInterfase.h"
 #include "GameFramework/Pawn.h"
 #include "TankPawn.generated.h"
 
@@ -19,7 +19,7 @@ class USpringArmComponent;
 class UCameraComponent;
 
 UCLASS()
-class TANKOGEDDON_API ATankPawn : public APawn, public IDamageTakerInterface
+class TANKOGEDDON_API ATankPawn : public APawn, public IDamageTakerInterface, public IScorableInterfase
 {
 	GENERATED_BODY()
 
@@ -56,6 +56,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
 	float TurretRotationSensitivity = 0.5f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Scores")
+	int32 DestroyedScore = 10;
 		
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Cannon")
 	TArray<TSubclassOf<ACannon>> DefaultCannonClasses;
@@ -99,7 +102,10 @@ public:
 	ACannon* GetCurrentCannon() const;
 
 	UFUNCTION()
-	virtual void TakeDamage(FDamageData DamageData) override;
+	virtual bool TakeDamage(FDamageData DamageData) override;
+
+	UFUNCTION()
+	virtual int32 GetDestroyScore() const override;
 
 	UFUNCTION()
 	void Die();

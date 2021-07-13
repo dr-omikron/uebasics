@@ -176,9 +176,19 @@ void ATankPawn::SetupCannonInternal(int32 SlotIndex, TSubclassOf<ACannon> NewCan
 	}
 }
 
-void ATankPawn::TakeDamage(FDamageData DamageData)
+bool ATankPawn::TakeDamage(FDamageData DamageData)
 {
 	HealthComponent->TakeDamage(DamageData);
+	if (HealthComponent->GetHealth() <= 0)
+	{
+		return true;
+	}
+	return false;
+}
+
+int32 ATankPawn::GetDestroyScore() const
+{
+	return DestroyedScore;
 }
 
 void ATankPawn::Die()

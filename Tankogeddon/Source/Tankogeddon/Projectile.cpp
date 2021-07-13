@@ -1,8 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "Projectile.h"
-
+#include "TankogeddonPlayerState.h"
 #include "DamageTakerInterface.h"
+#include "ScorableInterfase.h"
 #include "TimerManager.h"
 #include "Components/StaticMeshComponent.h"
 
@@ -39,10 +40,9 @@ void AProjectile::Stop()
 void AProjectile::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, 
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	AActor* MyOwner = GetOwner();
-	AActor* OwnerByOwner = MyOwner != nullptr ? MyOwner->GetOwner() : nullptr;
-	if(OtherActor != MyOwner && OtherActor != OwnerByOwner)
+	if(OtherActor != GetInstigator() && !OtherActor->GetClass()->IsChildOf(StaticClass()))
 	{
+		bool bWasDestroyed = false;
 		IDamageTakerInterface* DamageTakerActor = Cast<IDamageTakerInterface>(OtherActor);
 		if(DamageTakerActor)
 		{
@@ -51,12 +51,25 @@ void AProjectile::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 			DamageData.Instigator = GetInstigator();
 			DamageData.DamageMaker = this;
 
-			DamageTakerActor->TakeDamage(DamageData);
+			bWasDestroyed = DamageTakerActor->TakeDamage(DamageData);
 		}
 		else
 		{
 			OtherActor->Destroy();
+			bWasDestroyed = true;
 		}
+		IScorableInterfase* Scorable = Cast<IScorableInterfase>(OtherActor);
+		if (Scorable && bWasDestroyed && GetInstigator())
+		{
+			
+			ATankogeddonPlayerState* PlayerState = GetInstigator()->GetController()->GetPlayerState<ATankogeddonPlayerState>();
+			if(PlayerState != nullptr)
+			{
+				PlayerState->AddScores(Scorable->GetDestroyScore());
+				GEngine->AddOnScreenDebugMessage(15, 5.f, FColor::Cyan, FString::Printf(TEXT("Scores is: %d"), PlayerState->GetScores()));
+			}
+		}
+			
 	}
 	Stop();
 }
@@ -81,4 +94,9 @@ void AProjectile::MoveSpecial()
 		return;
 	}
 	SetActorLocation(NextPosition);
+}
+
+void AProjectile::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	GetWorld()->GetTimerManager().ClearTimer(StopTimerHandle);
 }

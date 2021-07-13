@@ -6,6 +6,8 @@
 
 #include "DamageTakerInterface.h"
 #include "GameStruct.h"
+#include "ScorableInterfase.h"
+
 #include "Turret.generated.h"
 
 class UHealthComponent;
@@ -14,7 +16,7 @@ class UBoxComponent;
 class UArrowComponent;
 
 UCLASS()
-class TANKOGEDDON_API ATurret : public APawn, public IDamageTakerInterface
+class TANKOGEDDON_API ATurret : public APawn, public IDamageTakerInterface, public IScorableInterfase
 {
     GENERATED_BODY()
 public:
@@ -50,11 +52,17 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Targeting")
     float Accurency = 10;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Scores")
+    int32 DestroyedScore = 5;
+
 	const FString BodyMeshPath = "StaticMesh'/Game/Meshes/turret_base.turret_base'";
     const FString TurretMeshPath = "StaticMesh'/Game/Meshes/turret_gun.turret_gun'";
 
 	UFUNCTION()
-    virtual void TakeDamage(FDamageData DamageData) override;
+    virtual bool TakeDamage(FDamageData DamageData) override;
+
+    UFUNCTION()
+    virtual int32 GetDestroyScore() const override;
 	
 protected:
     virtual void BeginPlay() override;

@@ -21,6 +21,7 @@ void ATankogeddonGameModeBase::OnProjectileStopped(AProjectile* InProjectile)
 {
 	check(InProjectile);
 	InProjectile->SetActorHiddenInGame(true);
+	InProjectile->SetActorEnableCollision(false);
 	ProjectilesPool.Push(InProjectile);
 }
 
@@ -45,6 +46,7 @@ AProjectile* ATankogeddonGameModeBase::GetOrCreateProjectile(TSubclassOf<AProjec
 	if(NewProjectile)
 	{
 		NewProjectile->SetActorHiddenInGame(false);
+		NewProjectile->SetActorEnableCollision(true);
 		NewProjectile->SetActorTransform(NewTransform);
 	}
 	else

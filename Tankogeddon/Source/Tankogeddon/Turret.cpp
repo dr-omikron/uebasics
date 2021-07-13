@@ -43,11 +43,22 @@ ATurret::ATurret()
 	HealthComponent = CreateDefaultSubobject<UHealthComponent>(TEXT("Health Component"));
 	HealthComponent->OnDie.AddUObject(this, &ATurret::Die);
 	HealthComponent->OnDamaged.AddUObject(this, &ATurret::DamageTaken);
+
 }
 
-void ATurret::TakeDamage(FDamageData DamageData) 
+bool ATurret::TakeDamage(FDamageData DamageData) 
 {
 	HealthComponent->TakeDamage(DamageData);
+	if(HealthComponent->GetHealth() <= 0)
+	{
+		return true;
+	}
+	return false;
+}
+
+int32 ATurret::GetDestroyScore() const
+{
+	return DestroyedScore;
 }
 
 // Called when the game starts or when spawned

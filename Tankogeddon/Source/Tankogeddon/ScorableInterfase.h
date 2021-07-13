@@ -3,13 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameStruct.h"
 #include "UObject/Interface.h"
-#include "DamageTakerInterface.generated.h"
+#include "ScorableInterfase.generated.h"
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UDamageTakerInterface : public UInterface
+class UScorableInterfase : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -17,10 +16,10 @@ class UDamageTakerInterface : public UInterface
 /**
  * 
  */
-class TANKOGEDDON_API IDamageTakerInterface
+class TANKOGEDDON_API IScorableInterfase
 {
 	GENERATED_BODY()
-			
+
 public:
-	virtual bool TakeDamage(FDamageData DamageData) = 0;
+	virtual int32 GetDestroyScore() const = 0;
 };
