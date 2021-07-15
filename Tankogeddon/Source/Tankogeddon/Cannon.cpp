@@ -11,7 +11,10 @@
 #include "TankogeddonPlayerState.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/ArrowComponent.h"
+#include "Components/AudioComponent.h"
 #include "Components/SceneComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 
 // Sets default values
@@ -23,6 +26,11 @@ ACannon::ACannon()
 	CanonMesh->SetupAttachment(SceneComp);
 	ProjectileSpawnPoint = CreateDefaultSubobject<UArrowComponent>(TEXT("Spawn Point"));
 	ProjectileSpawnPoint->SetupAttachment(CanonMesh);
+
+	ShootEffect = CreateDefaultSubobject<UParticleSystemComponent>("Shoot Effect");
+	ShootEffect->SetupAttachment(ProjectileSpawnPoint);
+	AudioEffect = CreateDefaultSubobject<UAudioComponent>("Audio Effect");
+	AudioEffect->SetupAttachment(ProjectileSpawnPoint);
 }
 
 void ACannon::AddAmmo(int32 AmmoQuantity)
@@ -69,6 +77,8 @@ void ACannon::Fire()
 			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Ammo: %d"), AmmoStock));
 			SpawnProjectile();
 			Timer();
+			StartEffects();
+			CameraShake();
 		}
 		if(AmmoStock <= 0)
 		{
@@ -92,6 +102,8 @@ void ACannon::Fire()
 			if (GetWorld()->LineTraceSingleByChannel(HitResult, StartPoint, EndPoint, ECollisionChannel::ECC_Visibility, TraceParams))
 			{
 				DrawDebugLine(GetWorld(), StartPoint, HitResult.Location, FColor::Red, false, 0.5f, 0, 10);
+				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitEffect, HitResult.Location);
+				AudioEffect->Play();
 				if (HitResult.Actor.IsValid())
 				{
 					bool bWasDestroyed = false;
@@ -105,11 +117,7 @@ void ACannon::Fire()
 						DamageData.DamageValue = FireDamage;
 						bWasDestroyed = Damagable->TakeDamage(DamageData);
 					}
-					else
-					{
-						HitActor->Destroy();
-						bWasDestroyed = true;
-					}
+					
 					if (Scorable && bWasDestroyed && GetInstigator())
 					{
 						ATankogeddonPlayerState* PlayerState = GetInstigator()->GetPlayerState<ATankogeddonPlayerState>();
@@ -126,6 +134,8 @@ void ACannon::Fire()
 				DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Green, false, 0.5f, 0, 10);
 			}
 			Timer();
+			StartEffects();
+			CameraShake();
 		}
 		if (AmmoStockTrace <= 0)
 		{
@@ -141,6 +151,8 @@ void ACannon::Fire()
 			GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Rockets : %d"), AmmoStockRockets));
 			SpawnProjectile();
 			Timer();
+			StartEffects();
+			CameraShake();
 		}
 		if (AmmoStockRockets <= 0)
 		{
@@ -158,6 +170,8 @@ void ACannon::FireSpecial()
 		GEngine->AddOnScreenDebugMessage(10, 1.f, FColor::Magenta, FString::Printf(TEXT("Special Ammo: %d"), AmmoStockSpecial));
 		SpawnProjectileSpecial();
 		Timer();
+		StartEffects();
+		CameraShake();
 	}
 	if (AmmoStockSpecial <= 0)
 	{
@@ -173,6 +187,8 @@ void ACannon::FireMachineGun()
 	}
 	GEngine->AddOnScreenDebugMessage(9, 0.1, FColor::Green, TEXT("Fire - MachineGun"));
 	SpawnProjectile();
+	StartEffects();
+	CameraShake();
 }
 
 AProjectile* ACannon::GetProjectile()
@@ -182,6 +198,18 @@ AProjectile* ACannon::GetProjectile()
 	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
 	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
 	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileClass, NewProjectileTransform);
+	Projectile->SetInstigator(GetInstigator());
+	Projectile->MoveRange = FireRange;
+	return Projectile;
+}
+
+AProjectile* ACannon::GetProjectileSpecial()
+{
+	FTransform NewProjectileTransform;
+	NewProjectileTransform.SetLocation(ProjectileSpawnPoint->GetComponentLocation());
+	NewProjectileTransform.SetRotation(ProjectileSpawnPoint->GetComponentRotation().Quaternion());
+	ATankogeddonGameModeBase* GameMode = Cast<ATankogeddonGameModeBase>(GetWorld()->GetAuthGameMode());
+	AProjectile* Projectile = GameMode->GetOrCreateProjectile(ProjectileSpecialClass, NewProjectileTransform);
 	Projectile->SetInstigator(GetInstigator());
 	Projectile->MoveRange = FireRange;
 	return Projectile;
@@ -200,7 +228,24 @@ void ACannon::SpawnProjectile()
 
 void ACannon::SpawnProjectileSpecial()
 {
-	GetProjectile()->StartSpecial();
+	GetProjectileSpecial()->StartSpecial();
+}
+
+void ACannon::StartEffects()
+{
+	ShootEffect->ActivateSystem();
+	AudioEffect->Play();
+}
+
+void ACannon::CameraShake()
+{
+	if(GetOwner() && GetOwner() == GetWorld()->GetFirstPlayerController()->GetPawn())
+	{
+		if(ShootShake)
+		{
+			GetWorld()->GetFirstPlayerController()->ClientStartCameraShake(ShootShake);
+		}
+	}
 }
 
 bool ACannon::IsReadyToFireCannonClass()

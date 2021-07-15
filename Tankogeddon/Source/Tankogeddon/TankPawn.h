@@ -17,6 +17,9 @@ class ATankPlayerController;
 class UStaticMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
+class UParticleSystem;
+class UMatineeCameraShake;
+class USoundBase;
 
 UCLASS()
 class TANKOGEDDON_API ATankPawn : public APawn, public IDamageTakerInterface, public IScorableInterfase
@@ -41,6 +44,15 @@ public:
 
 	UPROPERTY(BlueprintReadWrite, VisibleDefaultsOnly, Category = "Cannon")
 	UArrowComponent* CannonSetupPoint;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	UParticleSystem* DestructionEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	USoundBase* DestructionSound;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	TSubclassOf<UMatineeCameraShake> DestructionShake;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
 	float MoveSpeed = 100.f;
@@ -69,6 +81,12 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 	UHealthComponent* HealthComponent;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Move params|Patrol", meta = (MakeEditWidget = true))
+	TArray<FVector> PatrollingPoints;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI|Move params|Patrol")
+	float MovementAccurancy = 50.f;
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -89,6 +107,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Fire();
 
+	UFUNCTION(BlueprintCallable, Category = "Targeting")
+	void SetTurretLookAtPoint(FVector Point);
+
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void FireSpecial();
 
@@ -100,6 +121,12 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Cannon")
 	ACannon* GetCurrentCannon() const;
+
+	UFUNCTION(BlueprintPure, Category = "Turret")
+	FVector GetTurretDirection() const;
+
+	UFUNCTION(BlueprintPure, Category = "Turret")
+	FVector GetEyesPosition() const;
 
 	UFUNCTION()
 	virtual bool TakeDamage(FDamageData DamageData) override;
@@ -118,8 +145,6 @@ public:
 	
 private:
 	UPROPERTY()
-	ATankPlayerController* TankController = nullptr;
-	UPROPERTY()
 	TArray<ACannon*> CannonSlots;
 	UPROPERTY()
 	uint8 CurrentCannon = INDEX_NONE;
@@ -130,6 +155,8 @@ private:
 	float TargetMoveForwardAxis = 0.f;
 	float TargetMoveRightAxis = 0.f;
 	float TargetRotateRightAxis = 0.f;
+
+	FVector TurretLookAtPoint;
 
 	void SetupCannonInternal(int32 SlotIndex, TSubclassOf<ACannon> NewCannonClass);
 };

@@ -10,6 +10,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/ArrowComponent.h"
 #include "Components/BoxComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 
 // Sets default values
@@ -85,7 +86,7 @@ void ATurret::Destroyed()
 
 void ATurret::Targeting()
 {
-	if (IsPlayerInRange())
+	if (IsPlayerInRange() && QueryCanSeePlayer())
 	{
 		RotateToPlayer();
 	}
@@ -107,16 +108,42 @@ void ATurret::RotateToPlayer()
 
 bool ATurret::IsPlayerInRange()
 {
-	return FVector::Distance(PlayerPawn->GetActorLocation(), GetActorLocation()) <= TargetingRange;
+	if(PlayerPawn)
+	{
+		return FVector::Distance(PlayerPawn->GetActorLocation(), GetActorLocation()) <= TargetingRange;
+	}
+	return false;
 }
 
 bool ATurret::CanFire() const
 {
-	FVector TargetingDir = TurretMesh->GetForwardVector();
-	FVector DirToPlayer = PlayerPawn->GetActorLocation() - GetActorLocation();
-	DirToPlayer.Normalize();
-	float AimAngle = FMath::RadiansToDegrees(acosf(FVector::DotProduct(TargetingDir, DirToPlayer)));
-	return AimAngle <= Accurency;
+	if(PlayerPawn)
+	{
+		FVector TargetingDir = TurretMesh->GetForwardVector();
+		FVector DirToPlayer = PlayerPawn->GetActorLocation() - GetActorLocation();
+		DirToPlayer.Normalize();
+		float AimAngle = FMath::RadiansToDegrees(acosf(FVector::DotProduct(TargetingDir, DirToPlayer)));
+		return AimAngle <= Accurency;
+	}
+	return false;
+}
+
+bool ATurret::QueryCanSeePlayer()
+{
+	bool bResult = false;
+	FCollisionQueryParams Params(FName(TEXT("Enemy Eyes")), true, this);
+	Params.AddIgnoredActor(this);
+	Params.bReturnPhysicalMaterial = false;
+	FHitResult HitResult;
+
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, CannonSetupPoint->GetComponentLocation(), PlayerPawn->GetActorLocation(), ECC_Visibility, Params))
+	{
+		if (HitResult.Actor.Get())
+		{
+			bResult = HitResult.Actor.Get() == PlayerPawn;
+		}
+	}
+	return bResult;
 }
 
 void ATurret::Fire()
@@ -127,6 +154,15 @@ void ATurret::Fire()
 
 void ATurret::Die()
 {
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DestructionEffect, GetActorTransform());
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), DestructionSound, GetActorLocation());
+	if (GetOwner() && GetOwner() == GetWorld()->GetFirstPlayerController()->GetPawn())
+	{
+		if (DestructionShake)
+		{
+			GetWorld()->GetFirstPlayerController()->ClientStartCameraShake(DestructionShake);
+		}
+	}
 	Destroy();
 }
 

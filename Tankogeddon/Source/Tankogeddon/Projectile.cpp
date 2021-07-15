@@ -5,7 +5,10 @@
 #include "DamageTakerInterface.h"
 #include "ScorableInterfase.h"
 #include "TimerManager.h"
+#include "Components/AudioComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 AProjectile::AProjectile()
 {
@@ -33,6 +36,8 @@ void AProjectile::StartSpecial()
 
 void AProjectile::Stop()
 {
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitEffect, GetActorTransform());
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation());
 	GetWorld()->GetTimerManager().ClearTimer(MovementTimerHandle);
 	OnStopped.Broadcast(this);
 }
@@ -55,8 +60,8 @@ void AProjectile::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 		}
 		else
 		{
-			OtherActor->Destroy();
-			bWasDestroyed = true;
+			Stop();
+			return;
 		}
 		IScorableInterfase* Scorable = Cast<IScorableInterfase>(OtherActor);
 		if (Scorable && bWasDestroyed && GetInstigator())

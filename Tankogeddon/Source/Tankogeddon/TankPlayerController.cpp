@@ -34,9 +34,8 @@ void ATankPlayerController::Tick(float DeltaSecond)
 		CasheMousePos.Z = 0;
 		CasheMousePos.Normalize();
 		CasheMousePos = TankPosition + MouseDir * 1000.f;
-		
-		/*UE_LOG(LogTemp, Warning, TEXT("MousePosition = %f %f %f MouseDirection = %f %f %f"),
-			MousePositionScreen.X, MousePositionScreen.Y, MousePositionScreen.Z, MouseDirectionScreen.X, MouseDirectionScreen.Y, MouseDirectionScreen.Z);*/
+
+		TankPawn->SetTurretLookAtPoint(CasheMousePos);
 	}
 	
 	

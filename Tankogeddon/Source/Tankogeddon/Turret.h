@@ -7,13 +7,16 @@
 #include "DamageTakerInterface.h"
 #include "GameStruct.h"
 #include "ScorableInterfase.h"
-
 #include "Turret.generated.h"
 
+class UStaticMeshComponent;
 class UHealthComponent;
 class ACannon;
 class UBoxComponent;
 class UArrowComponent;
+class UParticleSystem;
+class USoundBase;
+class UMatineeCameraShake;
 
 UCLASS()
 class TANKOGEDDON_API ATurret : public APawn, public IDamageTakerInterface, public IScorableInterfase
@@ -39,6 +42,15 @@ public:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Ammo")
     TSubclassOf<ACannon> CannonClass;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+    UParticleSystem* DestructionEffect;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+    USoundBase* DestructionSound;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+    TSubclassOf<UMatineeCameraShake> DestructionShake;
     
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Targeting")
     float TargetingRange = 1000;
@@ -72,6 +84,8 @@ protected:
     bool IsPlayerInRange();
 	UFUNCTION(BlueprintPure)
     bool CanFire() const;
+    UFUNCTION(BlueprintCallable)
+    bool QueryCanSeePlayer();
     void Fire();
 	
 private:

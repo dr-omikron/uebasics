@@ -10,6 +10,9 @@
 class AProjectile;
 class UArrowComponent;
 class UStaticMeshComponent;
+class UParticleSystemComponent;
+class UAudioComponent;
+class UMatineeCameraShake;
 
 UCLASS()
 class TANKOGEDDON_API ACannon : public AActor
@@ -26,6 +29,18 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 	UArrowComponent* ProjectileSpawnPoint;
 
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	UParticleSystemComponent* ShootEffect;
+
+	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	UAudioComponent* AudioEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	TSubclassOf<UMatineeCameraShake> ShootShake;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	UParticleSystem* HitEffect;
+		
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
 	float FireRate = 1.f;
 
@@ -61,6 +76,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
 	TSubclassOf<AProjectile> ProjectileClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Fire Property")
+	TSubclassOf<AProjectile> ProjectileSpecialClass;
 				
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Fire();
@@ -88,6 +106,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	AProjectile* GetProjectile();
+
+	UFUNCTION(BlueprintCallable, Category = "Fire")
+	AProjectile* GetProjectileSpecial();
 	
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void Timer();
@@ -97,6 +118,12 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Fire")
 	void SpawnProjectileSpecial();
+
+	UFUNCTION(BlueprintCallable, Category = "Effects")
+	void StartEffects();
+
+	UFUNCTION(BlueprintCallable, Category = "Effects")
+	void CameraShake();
 
 	UFUNCTION(BlueprintCallable, Category = "Visibility")
 	bool IsReadyToFireCannonClass();

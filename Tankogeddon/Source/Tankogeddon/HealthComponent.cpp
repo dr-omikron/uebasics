@@ -36,7 +36,7 @@ float UHealthComponent::GetHealth() const
 
 float UHealthComponent::GetHealthState() const
 {
-	return CurrentHealth / MaxHealth * 100;
+	return CurrentHealth / MaxHealth * 100.f;
 }
 
 void UHealthComponent::AddHealth(float AddiditionalHealthValue)

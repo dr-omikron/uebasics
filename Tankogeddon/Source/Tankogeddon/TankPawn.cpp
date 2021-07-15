@@ -11,6 +11,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
@@ -52,7 +53,6 @@ ATankPawn::ATankPawn()
 void ATankPawn::BeginPlay()
 {
 	Super::BeginPlay();
-	TankController = Cast<ATankPlayerController>(GetController());
 	if(DefaultCannonClasses.Num() == 0)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Num of DefautCannonClasses should be larger than zero!"))
@@ -82,18 +82,16 @@ void ATankPawn::Tick(float DeltaTime)
 	FRotator CurrentRotation = GetActorRotation();
 	FRotator NewRotation { 0.f ,CurrentRotation.Yaw + RotationSpeed * CurrentRotateRightAxis * DeltaTime, 0.f };
 	SetActorRotation(NewRotation);
-	if(TankController)
-	{
-		FVector TurretLookAtPoint = CurrentLocation + TankController->GetMousePos() * 1000.f;
-		FVector TurretCurrentLocation = TurretMesh->GetComponentLocation();
-		FRotator TargetTurretRotation = UKismetMathLibrary::FindLookAtRotation(TurretCurrentLocation, TurretLookAtPoint);
-		FRotator CurrentTurretRotation = TurretMesh->GetComponentRotation();
-		TargetTurretRotation.Pitch = CurrentTurretRotation.Pitch;
-		TargetTurretRotation.Roll = CurrentTurretRotation.Roll;
-		TurretLookAtPoint.Z = 0;
-		DrawDebugLine(GetWorld(), TurretCurrentLocation, TurretLookAtPoint, FColor::Cyan, false, 0.f, 0, 5.f);
-		TurretMesh->SetWorldRotation(FMath::Lerp(CurrentTurretRotation, TargetTurretRotation, TurretRotationSensitivity));
-	}
+		
+	FVector TurretCurrentLocation = TurretMesh->GetComponentLocation();
+	FRotator TargetTurretRotation = UKismetMathLibrary::FindLookAtRotation(TurretCurrentLocation, TurretLookAtPoint);
+	FRotator CurrentTurretRotation = TurretMesh->GetComponentRotation();
+	TargetTurretRotation.Pitch = CurrentTurretRotation.Pitch;
+	TargetTurretRotation.Roll = CurrentTurretRotation.Roll;
+	TurretLookAtPoint.Z = 0;
+	DrawDebugLine(GetWorld(), TurretCurrentLocation, TurretLookAtPoint, FColor::Cyan, false, 0.f, 0, 5.f);
+	TurretMesh->SetWorldRotation(FMath::Lerp(CurrentTurretRotation, TargetTurretRotation, TurretRotationSensitivity));
+	
 }
 
 void ATankPawn::MoveForward(float InMoveForwardAxisValue)
@@ -117,6 +115,11 @@ void ATankPawn::Fire()
 	{
 		Cannon->Fire();
 	}
+}
+
+void ATankPawn::SetTurretLookAtPoint(FVector Point)
+{
+	TurretLookAtPoint = Point;
 }
 
 void ATankPawn::FireSpecial()
@@ -153,6 +156,16 @@ ACannon* ATankPawn::GetCurrentCannon() const
 {
 	check(CannonSlots.IsValidIndex(CurrentCannon));
 	return CannonSlots[CurrentCannon];
+}
+
+FVector ATankPawn::GetTurretDirection() const
+{
+	return TurretMesh->GetForwardVector();
+}
+
+FVector ATankPawn::GetEyesPosition() const
+{
+	return CannonSetupPoint->GetComponentLocation();
 }
 
 void ATankPawn::SetupCannonInternal(int32 SlotIndex, TSubclassOf<ACannon> NewCannonClass)
@@ -193,6 +206,16 @@ int32 ATankPawn::GetDestroyScore() const
 
 void ATankPawn::Die()
 {
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DestructionEffect, GetActorTransform());
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), DestructionSound, GetActorLocation());
+	if (GetOwner() && GetOwner() == GetWorld()->GetFirstPlayerController()->GetPawn())
+	{
+		if (DestructionShake)
+		{
+			GetWorld()->GetFirstPlayerController()->ClientStartCameraShake(DestructionShake);
+		}
+	}
+	GetCurrentCannon()->Destroy();
 	Destroy();
 }
 

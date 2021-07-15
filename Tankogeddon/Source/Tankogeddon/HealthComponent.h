@@ -18,12 +18,11 @@ class TANKOGEDDON_API UHealthComponent : public UActorComponent
 public:	
 	UHealthComponent();
 
-protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Health values")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health values")
 	float MaxHealth = 10;
 
-	UPROPERTY()
-	float CurrentHealth;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Health values")
+	float CurrentHealth = 0;
 
 public:
 	FOnDie OnDie;

@@ -9,6 +9,10 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProjectileStopped, class AProjectile*, InProjectile);
 
+class UParticleSystem;
+class UStaticMeshComponent;
+class USoundBase;
+
 UCLASS()
 class TANKOGEDDON_API AProjectile : public AActor
 {
@@ -23,6 +27,12 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "Components")
 	UStaticMeshComponent* ProjectileMesh;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	UParticleSystem* HitEffect;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Effects")
+	USoundBase* HitSound;
+		
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Movement")
 	float MoveSpeed = 100.f;
 

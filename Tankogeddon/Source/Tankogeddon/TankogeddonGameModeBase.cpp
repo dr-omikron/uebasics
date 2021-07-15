@@ -46,13 +46,14 @@ AProjectile* ATankogeddonGameModeBase::GetOrCreateProjectile(TSubclassOf<AProjec
 	if(NewProjectile)
 	{
 		NewProjectile->SetActorHiddenInGame(false);
-		NewProjectile->SetActorEnableCollision(true);
 		NewProjectile->SetActorTransform(NewTransform);
+		NewProjectile->SetActorEnableCollision(true);
 	}
 	else
 	{
 		NewProjectile = GetWorld()->SpawnActor<AProjectile>(ProjectileClass, NewTransform);
 		NewProjectile->OnStopped.AddDynamic(this, &ATankogeddonGameModeBase::OnProjectileStopped);
+		UE_LOG(LogTemp, Warning, TEXT("Projectile spawed"))
 	}
 	return NewProjectile;
 }
