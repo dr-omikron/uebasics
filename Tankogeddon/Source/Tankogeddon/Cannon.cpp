@@ -29,6 +29,7 @@ ACannon::ACannon()
 
 	ShootEffect = CreateDefaultSubobject<UParticleSystemComponent>("Shoot Effect");
 	ShootEffect->SetupAttachment(ProjectileSpawnPoint);
+	
 	AudioEffect = CreateDefaultSubobject<UAudioComponent>("Audio Effect");
 	AudioEffect->SetupAttachment(ProjectileSpawnPoint);
 }
@@ -233,7 +234,9 @@ void ACannon::SpawnProjectileSpecial()
 
 void ACannon::StartEffects()
 {
+	ShootEffect->SetVisibility(true);
 	ShootEffect->ActivateSystem();
+	AudioEffect->Activate();
 	AudioEffect->Play();
 }
 
@@ -274,6 +277,8 @@ void ACannon::SetIsActive(bool bInIsActive)
 void ACannon::BeginPlay()
 {
 	Super::BeginPlay();
+	ShootEffect->SetVisibility(false);
+	AudioEffect->Deactivate();
 	Reload();
 	if(Type == ECannonType::FireProjectile)
 	{

@@ -2,30 +2,25 @@
 
 
 #include "TankAIController.h"
-
 #include "DrawDebugHelpers.h"
 #include "TankPawn.h"
+#include "Engine/TargetPoint.h"
 
 void ATankAIController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	OurTank = Cast<ATankPawn>(GetPawn());
-	FVector TankLocation = OurTank->GetActorLocation();
-	if(OurTank && OurTank->PatrollingPoints.Num() > 0)
-	{
-		CurrentPatrolPointIndex = 0;
-		for(const auto Point : OurTank->PatrollingPoints)
-		{
-			CashedPatrollingPoints.Add(TankLocation + Point);
-		}
-	}
+	Initialize();
 }
 
 void ATankAIController::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	if(!OurTank)
+	{
+		Initialize();
+	}
+	
 	if(!OurTank || CurrentPatrolPointIndex == INDEX_NONE)
 	{
 		return;
@@ -46,8 +41,6 @@ void ATankAIController::Tick(float DeltaSeconds)
 	MoveDirection.Normalize();
 	FVector ForwardDirection = OurTank->GetActorForwardVector();
 	FVector RightDirection = OurTank->GetActorRightVector();
-
-	//DrawDebugLine(GetWorld(), PawnLocation, CurrentPoint, FColor::Green, false, 0.1f, 0, 5);
 
 	float ForwardAngleCos = FVector::DotProduct(ForwardDirection, MoveDirection);
 	float RightAngleCos = FVector::DotProduct(RightDirection, MoveDirection);
@@ -98,6 +91,22 @@ void ATankAIController::Tick(float DeltaSeconds)
 			if (FMath::RadiansToDegrees(AngleToPlayer) < Accurency)
 			{
 				OurTank->Fire();
+			}
+		}
+	}
+}
+
+void ATankAIController::Initialize()
+{
+	OurTank = Cast<ATankPawn>(GetPawn());
+	if (OurTank && OurTank->PatrollingPoints.Num() > 0)
+	{
+		CurrentPatrolPointIndex = 0;
+		for (ATargetPoint* Point : OurTank->PatrollingPoints)
+		{
+			if (Point)
+			{
+				CashedPatrollingPoints.Add(Point->GetActorLocation());
 			}
 		}
 	}

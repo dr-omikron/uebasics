@@ -32,6 +32,8 @@ protected:
 	virtual void Tick(float DeltaSeconds) override;
 	
 private:
+	void Initialize();
+	
 	int32 CurrentPatrolPointIndex = INDEX_NONE;
 
 	UPROPERTY()
