@@ -36,6 +36,10 @@ void AProjectile::StartSpecial()
 
 void AProjectile::Stop()
 {
+	if (bIsExplode)
+	{
+		Explode();
+	}
 	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), HitEffect, GetActorTransform());
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation());
 	GetWorld()->GetTimerManager().ClearTimer(MovementTimerHandle);
@@ -60,8 +64,18 @@ void AProjectile::OnMeshOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor
 		}
 		else
 		{
-			Stop();
-			return;
+			UPrimitiveComponent* Primitive = Cast<UPrimitiveComponent>(OtherActor->GetRootComponent());
+			if(Primitive && Primitive->IsSimulatingPhysics())
+			{
+				FVector ForceVector = OtherActor->GetActorLocation() - GetActorLocation();
+				ForceVector.Normalize();
+				Primitive->AddImpulse(ForceVector * PushForce, NAME_None, true);
+			}
+			else
+			{
+				Stop();
+				return;
+			}
 		}
 		IScorableInterfase* Scorable = Cast<IScorableInterfase>(OtherActor);
 		if (Scorable && bWasDestroyed && GetInstigator())
@@ -101,7 +115,78 @@ void AProjectile::MoveSpecial()
 	SetActorLocation(NextPosition);
 }
 
+void AProjectile::DamageCheck(AActor* OtherActor)
+{
+	bool bWasDestroyed = false;
+	IDamageTakerInterface* DamageTakerActor = Cast<IDamageTakerInterface>(OtherActor);
+	if (DamageTakerActor)
+	{
+		FDamageData DamageData;
+		DamageData.DamageValue = Damage;
+		DamageData.Instigator = GetOwner();
+		DamageData.DamageMaker = this;
+
+		bWasDestroyed = DamageTakerActor->TakeDamage(DamageData);
+	}
+	else
+	{
+		UPrimitiveComponent* Mesh = Cast<UPrimitiveComponent>(OtherActor->GetRootComponent());
+		if (Mesh)
+		{
+			if (Mesh->IsSimulatingPhysics())
+			{
+				FVector ForceVector = OtherActor->GetActorLocation() - GetActorLocation();
+				ForceVector.Normalize();
+				Mesh->AddForce(ForceVector * PushForce, NAME_None, true);
+			}
+		}
+	}
+	IScorableInterfase* Scorable = Cast<IScorableInterfase>(OtherActor);
+	if (Scorable && bWasDestroyed && GetInstigator())
+	{
+
+		ATankogeddonPlayerState* PlayerState = GetInstigator()->GetController()->GetPlayerState<ATankogeddonPlayerState>();
+		if (PlayerState != nullptr)
+		{
+			PlayerState->AddScores(Scorable->GetDestroyScore());
+			GEngine->AddOnScreenDebugMessage(15, 5.f, FColor::Cyan, FString::Printf(TEXT("Scores is: %d"), PlayerState->GetScores()));
+		}
+	}
+}
+
 void AProjectile::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	GetWorld()->GetTimerManager().ClearTimer(StopTimerHandle);
+}
+
+void AProjectile::Explode()
+{
+	FVector StartPos = GetActorLocation();
+	FVector EndPos = StartPos + FVector(0.1f);
+	FCollisionShape Shape = FCollisionShape::MakeSphere(ExplodeRadius);
+	FCollisionQueryParams Params = FCollisionQueryParams::DefaultQueryParam;
+	Params.AddIgnoredActor(this);
+	Params.bTraceComplex = true;
+	Params.TraceTag = "Explode Trace";
+
+	TArray<FHitResult> AttackHit;
+
+	FQuat Rotation = FQuat::Identity;
+
+	bool bSweepResult = GetWorld()->SweepMultiByChannel(AttackHit, StartPos, EndPos, Rotation, ECollisionChannel::ECC_Visibility, Shape, Params);
+
+	GetWorld()->DebugDrawTraceTag = "Explode Trace";
+
+	if (bSweepResult)
+	{
+		for (FHitResult HitResult : AttackHit)
+		{
+			AActor* OtherActor = HitResult.GetActor();
+			if (!OtherActor)
+			{
+				continue;
+			}
+			DamageCheck(OtherActor);
+		}
+	}
 }

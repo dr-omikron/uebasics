@@ -20,7 +20,7 @@ class TANKOGEDDON_API AProjectile : public AActor
 	
 public:	
 	AProjectile();
-	void Start();
+	virtual void Start();
 	void StartSpecial();
 	void Stop();
 	
@@ -45,6 +45,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float MoveRange = 1000.f;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
+	float PushForce = 1000.f;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = " Special|Movement")
 	float MoveRangeSpecial = 6.f;
 
@@ -53,6 +56,12 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Movement")
 	FOnProjectileStopped OnStopped;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Damage")
+	float ExplodeRadius = 50.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Damage")
+	bool bIsExplode = false;
 	
 	
 protected:
@@ -63,11 +72,17 @@ protected:
 	void OnMeshOverlapBegin(class UPrimitiveComponent* OverlappedComp, class AActor* OtherActor, 
 		class UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 	UFUNCTION()
-	void Move();
+	virtual void Move();
 
 	UFUNCTION()
 	void MoveSpecial();
+		
+	UFUNCTION()
+	void Explode();
 
+	UFUNCTION()
+	void DamageCheck(AActor* OtherActor);
+	
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	float FlewDistance = 0.f;
